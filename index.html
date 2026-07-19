@@ -146,6 +146,7 @@ input#nameInput{font-size:16px;padding:9px 14px;border-radius:10px;border:2px so
     ・<b style="color:#ff5a5a">制限時間はシビア。</b>尽きると自動ミス＝反撃の副流煙<br>
     ・バー右端の<span style="color:#7ee787">緑ゾーン</span>で押すと<b>ジャスト（会心）</b><br>
     ・弱点連続でコンボ倍率 ×1.5→×2→×3…<br>
+    ・<b style="color:#7ee787">弱点を突くと副流煙が少し晴れる</b>（ジャストは多め）<br>
     ・効かない属性を選ぶと副流煙ゲージ上昇<br>
     ・ゲージ満タンでゲームオーバー<br>
     ・10Fごとのボス「喫煙所の主」は<b>「禁煙外来」</b>のみ有効<br>
@@ -555,7 +556,8 @@ function timerDurationFor(){
   const base=3700-(f-1)*130;            // 1階ごと0.13秒短縮
   const extra=f>10 ? (f-10)*70 : 0;      // 11F以降さらに加速
   let d=Math.max(900, base-extra);       // 20F付近で0.9秒
-  if(f>=25) d=Math.min(d, 700);          // 25F以降は0.7秒でさらにシビア
+  if(f>=25) d=Math.min(d, 700);          // 25F以降は0.7秒
+  if(f>=30) d=Math.min(d, 500);          // 30F以降は0.5秒（超シビア）
   return d;
 }
 function startTimer(resumeRatio){
@@ -660,6 +662,8 @@ function playCard(card){
       let dmg=1; if(isJust){dmg=2;state.justCount++;}
       state.enemyHp-=dmg;state.totalDmg+=dmg;
       state.hitTimer=8;
+      // 弱点じゃない＝刺さりが浅く、副流煙を浴びる（耐性ほどではない）
+      enemySmokeAttack(8+Math.floor(state.floor/2));
       showTalk("…で？刺さらんな");
       spawnHitParticles(false);
     }else{
