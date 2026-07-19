@@ -84,6 +84,12 @@ input#nameInput{font-size:16px;padding:9px 14px;border-radius:10px;border:2px so
 .vol-row input[type=range]{flex:1;accent-color:#3ec8ff;height:26px}
 /* タイトル画面の追加要素 */
 #a2hs{font-size:12px;color:#9fe8ff;background:rgba(62,200,255,.1);border:1px solid rgba(62,200,255,.3);border-radius:10px;padding:8px 14px;margin:16px 0 6px;line-height:1.7}
+#titleRankWrap{width:100%;max-width:340px;margin:14px auto 4px;background:rgba(0,0,0,.3);border:1px solid rgba(255,215,94,.25);border-radius:12px;padding:10px 12px}
+#titleRankHead{font-size:13px;font-weight:bold;color:#ffd75e;text-align:center;margin-bottom:8px}
+#titleRankList{font-size:12px;text-align:left;max-height:150px;overflow-y:auto}
+#titleRankList .row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dashed #333}
+#titleRankList .row:last-child{border-bottom:none}
+#titleRankList .empty{text-align:center;color:#888;padding:6px}
 #otherGames{display:inline-block;font-size:14px;font-weight:bold;color:#ffd75e;background:rgba(255,215,94,.1);border:1px solid rgba(255,215,94,.4);border-radius:12px;padding:11px 20px;margin:8px 0;text-decoration:none}
 #otherGames:active{transform:scale(.96)}
 </style>
@@ -119,6 +125,10 @@ input#nameInput{font-size:16px;padding:9px 14px;border-radius:10px;border:2px so
     <p class="tagline">キメ顔喫煙者が積み上がる塔を<br>正論カードで崩壊させろ。<br>弱点を突けばキメ顔が崩れる——</p>
     <button class="btn" id="startBtn">正論バトル開始</button>
     <button class="btn sub" id="howtoBtn">あそびかた</button>
+    <div id="titleRankWrap">
+      <div id="titleRankHead">🏆 正論マスターランキング</div>
+      <div id="titleRankList">読み込み中…</div>
+    </div>
     <div id="a2hs">📲 共有ボタン →「ホーム画面に追加」で<br>アプリみたいに遊べるよ</div>
     <a id="otherGames" href="https://godmomorin.github.io/links/" target="_blank" rel="noopener">
       カイディンディンの他のゲームも遊んでみる？ ▶
@@ -132,7 +142,7 @@ input#nameInput{font-size:16px;padding:9px 14px;border-radius:10px;border:2px so
     <p style="font-size:13px;line-height:1.85;text-align:left;max-width:330px">
     ・3枚の正論カードから1枚選んで攻撃<br>
     ・弱点属性（<span style="color:#7ee787">健康</span>／<span style="color:#ffd75e">金銭</span>／<span style="color:#c8a2ff">臭い</span>／<span style="color:#ff9db0">ダサい</span>）を突けば大ダメージ<br>
-    ・<b style="color:#9fe8ff">弱点は敵のセリフから読め！</b>倒せば図鑑に記録<br>
+    ・<b style="color:#9fe8ff">弱点は敵のセリフから読め！</b><br>
     ・<b style="color:#ff5a5a">制限時間はシビア。</b>尽きると自動ミス＝反撃の副流煙<br>
     ・バー右端の<span style="color:#7ee787">緑ゾーン</span>で押すと<b>ジャスト（会心）</b><br>
     ・弱点連続でコンボ倍率 ×1.5→×2→×3…<br>
@@ -157,6 +167,7 @@ input#nameInput{font-size:16px;padding:9px 14px;border-radius:10px;border:2px so
     <div id="rankList" class="hidden"></div>
     <button class="btn" id="shareBtn">Xで自慢する</button>
     <button class="btn sub" id="retryBtn">もう一回崩す</button>
+    <button class="btn sub" id="resultHomeBtn">トップに戻る</button>
   </div>
 
   <!-- トップに戻る確認モーダル -->
@@ -233,19 +244,39 @@ const ATTRS = {
 const CARD_POOL = {
   health:[
     "肺、真っ黒ですよ","タール、沈着してますよ","1本で寿命10分縮むらしいですよ",
-    "健康診断の紙、見ました？","階段で息切れしてましたよね"
+    "健康診断の紙、見ました？","階段で息切れしてましたよね",
+    "咳、止まらなくなりますよ","血管ボロボロになりますよ",
+    "肌の老化、早まりますよ","味覚も鈍ってきてません？",
+    "睡眠の質、下がってますよ","歯も黄ばんできてますよ",
+    "指先、黄色くなってますよ","肺年齢、実年齢の倍ですよ",
+    "がんのリスク、跳ね上がりますよ","朝の一本、体に一番悪いですよ"
   ],
   money:[
     "1箱600円、年間22万円ですよ","半分くらい税金吸ってますよ","その金でうまいもん食えますよ",
-    "ライター何個買いました？","禁煙したら旅行行けますよ"
+    "ライター何個買いました？","禁煙したら旅行行けますよ",
+    "10年で220万、車買えますよ","その煙、燃やしてる札束ですよ",
+    "コンビニ寄る手間も時給換算で損ですよ","値上げ、また来ますよ",
+    "保険料も上がるらしいですよ","歯のクリーニング代もかさみますよ",
+    "その一箱で本が2冊買えますよ","積み立てたら老後安泰ですよ",
+    "喫煙所への往復、時給いくらの損？","ふるさと納税した方がマシですよ"
   ],
   smell:[
     "服に臭い、移るんで","息が灰皿なんですよ","エレベーター一緒はキツいです",
-    "3歩先から分かりますよ","会議室に残り香すごいです"
+    "3歩先から分かりますよ","会議室に残り香すごいです",
+    "髪にも染みついてますよ","車の中、こもってますよ",
+    "上着、クリーニング直行ですよ","タバコの後の握手、きついです",
+    "口臭ケアしても隠せてないですよ","布団も臭うらしいですよ",
+    "接客後、お客さん気づいてますよ","カーテンにも染みますよ",
+    "手についた匂い、食事で分かりますよ","隣の席、実は我慢してますよ"
   ],
   dasai:[
     "そのキメ顔、誰も見てないです","昭和で時間止まってますよ","煙たなびかせてもモテません",
-    "壁ドン喫煙、ダサいです","「フッ…」って言うのやめません？"
+    "壁ドン喫煙、ダサいです","「フッ…」って言うのやめません？",
+    "映画の真似、寒いですよ","令和ですよ、今",
+    "紫煙で憂い演出、痛いです","そのポーズ、鏡で見ました？",
+    "背中で語る前に禁煙しては？","キメてるの本人だけですよ",
+    "喫煙所トークもう古いですよ","ワイルド気取り、逆効果です",
+    "その渋さ、誰も求めてないです","ヤニで渋くはなれないですよ"
   ],
   special:["禁煙外来、予約しときました"]
 };
@@ -378,7 +409,7 @@ function bgmStep(){
 /* 階層に応じたテンポ（10階ごとに速くなる）。intervalが小さいほど速い */
 function bgmIntervalFor(floor){
   const steps=Math.floor((floor-1)/10); // 0,1,2,...
-  return Math.max(90, 140 - steps*12);   // 140→128→116…下限90ms
+  return Math.max(65, 140 - steps*20);   // 140→120→100→80→65 下限65ms（かなり速い）
 }
 function bgmStart(){
   audio();
@@ -429,6 +460,7 @@ function goTitle(){
   $("titleScreen").classList.remove("hidden");
   if(state)state.phase="title";
   pausedByModal=false;
+  loadTitleRanking();
 }
 $("homeBtn").addEventListener("click",()=>{
   if(!state||state.phase==="title"){return;}
@@ -509,10 +541,9 @@ function renderCards(){
     d.addEventListener("click",()=>playCard(c));
     box.appendChild(d);
   });
-  // ヒント表示：図鑑に載ってれば弱点を明示、初見はセリフから推理
+  // ヒント表示：弱点はセリフから読ませる（明示しない）
   const e=state.enemy;
   if(e.type==="boss")$("turnMsg").textContent="正論が通じない…！何かが要る";
-  else if(dex[e.type])$("turnMsg").innerHTML=`弱点は<b style="color:${ATTRS[e.weak].color}">${ATTRS[e.weak].name}</b>（図鑑済）`;
   else $("turnMsg").textContent="セリフから弱点を読め！";
   startTimer();
 }
@@ -1148,6 +1179,27 @@ async function loadRanking(){
   }
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+/* タイトル画面のランキング読み込み */
+async function loadTitleRanking(){
+  if(!RANKING_ON){$("titleRankWrap").style.display="none";return;}
+  const list=$("titleRankList");
+  list.innerHTML='<div class="empty">読み込み中…</div>';
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/yt_top`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY},
+      body:JSON.stringify({})
+    });
+    if(!res.ok)throw new Error("load failed");
+    const rows=await res.json();
+    list.innerHTML=(rows||[]).map((r,i)=>{
+      const medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":(i+1)+"位";
+      return `<div class="row"><span>${medal} ${escapeHtml(r.name)}</span><span>${r.floor}F / ${r.score}</span></div>`;
+    }).join("")||'<div class="empty">まだ誰もいない…一番乗りを狙え！</div>';
+  }catch(e){
+    list.innerHTML='<div class="empty">ランキング取得に失敗</div>';
+  }
+}
 function share(){
   const text=`【ヤニカスの塔】${state.floor}Fまで正論で崩した！（スコア${calcScore()}）\n#ヤニカスの塔 #カイディンディン`;
   const url=location.href.split("?")[0];
@@ -1175,6 +1227,7 @@ function startGame(){
 }
 $("startBtn").addEventListener("click",startGame);
 $("retryBtn").addEventListener("click",startGame);
+$("resultHomeBtn").addEventListener("click",goTitle);
 $("howtoBtn").addEventListener("click",()=>{$("titleScreen").classList.add("hidden");$("howtoScreen").classList.remove("hidden");});
 $("backBtn").addEventListener("click",()=>{$("howtoScreen").classList.add("hidden");$("titleScreen").classList.remove("hidden");});
 $("shareBtn").addEventListener("click",share);
@@ -1185,6 +1238,7 @@ $("viewRankBtn").addEventListener("click",loadRanking);
 state=newState();
 resize();
 requestAnimationFrame(loop);
+loadTitleRanking();
 </script>
 </body>
 </html>
