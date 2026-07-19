@@ -8,12 +8,15 @@
 <meta property="og:title" content="ヤニカスの塔">
 <meta property="og:description" content="正論カードで喫煙者の塔を崩すバトルゲーム。弱点を突いてキメ顔を崩壊させろ！">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://kaidindin.github.io/yanikasu-tower/">
+<meta property="og:url" content="https://kaidindin.github.io/yanikasu/">
+<meta property="og:image" content="https://kaidindin.github.io/yanikasu/ikiri.png">
+<link rel="canonical" href="https://kaidindin.github.io/yanikasu/">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kaidindin.github.io/yanikasu/ikiri.png">
 <meta name="theme-color" content="#0c0d16">
 <link rel="manifest" href='data:application/manifest+json,{"name":"ヤニカスの塔","short_name":"ヤニカスの塔","start_url":".","display":"standalone","background_color":"%230c0d16","theme_color":"%230c0d16"}'>
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"VideoGame","name":"ヤニカスの塔","author":{"@type":"Person","name":"カイディンディン"},"genre":"バトル,ギャグ","inLanguage":"ja","url":"https://kaidindin.github.io/yanikasu-tower/"}
+{"@context":"https://schema.org","@type":"VideoGame","name":"ヤニカスの塔","author":{"@type":"Person","name":"カイディンディン"},"genre":"バトル,ギャグ","inLanguage":"ja","url":"https://kaidindin.github.io/yanikasu/"}
 </script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
@@ -351,13 +354,19 @@ function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random
 function makeHand(){
   const keys=["health","money","smell","dasai"];
   const hand=[];const e=state.enemy;
-  if(e.type==="boss")hand.push({attr:"special",txt:CARD_POOL.special[0]});
-  // 弱点カードは常に出やすく（推理して選べるように）だが確定ではない
-  if(e.type!=="boss"&&Math.random()<0.8)
+  if(e.type==="boss"){
+    // ボスは禁煙外来を必ず1枚
+    hand.push({attr:"special",txt:CARD_POOL.special[0]});
+  }else{
+    // 弱点カードを必ず1枚入れる（推理して選べば必ず刺せる）
     hand.push({attr:e.weak,txt:pick(CARD_POOL[e.weak])});
+  }
+  // 残りは弱点以外から埋める（弱点が重複しすぎて答えバレしないように）
+  const others=keys.filter(k=>k!==e.weak || e.type==="boss");
   while(hand.length<3){
-    const k=keys[Math.floor(Math.random()*keys.length)];
-    if(hand.some(c=>c.attr===k)&&Math.random()<0.6)continue;
+    const pool = hand.length===2 ? keys : others; // 最後の1枚は全属性から
+    const k=pool[Math.floor(Math.random()*pool.length)];
+    if(hand.some(c=>c.attr===k)&&Math.random()<0.7)continue;
     hand.push({attr:k,txt:pick(CARD_POOL[k])});
   }
   return shuffle(hand).slice(0,3);
@@ -380,11 +389,14 @@ function renderCards(){
   startTimer();
 }
 
-/* ---------- 制限時間バー（シビア） ---------- */
+/* ---------- 制限時間バー（階層でシビアに） ---------- */
 function timerDurationFor(){
-  // 階が上がるほど短くなる。3.2秒→下限1.5秒
-  const d=3200-(state.floor-1)*80;
-  return Math.max(1500,d);
+  // 1F=4.0秒スタート。階ごとに短縮し、上限フロアで1.2秒まで詰まる。
+  // 序盤ゆったり→中盤以降きつくなる二段カーブ
+  const f=state.floor;
+  const base=4000-(f-1)*130;            // 1階ごと0.13秒短縮
+  const extra=f>10 ? (f-10)*70 : 0;      // 11F以降さらに加速
+  return Math.max(1200, base-extra);
 }
 function startTimer(){
   stopTimer();
