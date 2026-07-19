@@ -28,7 +28,8 @@ html,body{height:100%;overflow:hidden;background:#0c0d16;font-family:"Hiragino M
 .hud-box{background:rgba(0,0,0,.45);border:1px solid #2c2f42;border-radius:9px;padding:4px 10px;font-size:12px;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #floorLabel{color:#ffd75e;font-size:14px;flex:1}
 #comboLabel{color:#9fe8ff}
-#bgmBtn{background:rgba(0,0,0,.45);border:1px solid #2c2f42;border-radius:9px;color:#ddd;font-size:14px;padding:4px 8px;cursor:pointer}
+#homeBtn,#soundBtn{background:rgba(0,0,0,.45);border:1px solid #2c2f42;border-radius:9px;color:#ddd;font-size:15px;padding:4px 9px;cursor:pointer;line-height:1}
+#homeBtn{color:#ff9db0;font-weight:bold}
 #smokeBarBg{height:12px;background:rgba(0,0,0,.55);border-radius:6px;overflow:hidden;border:1px solid #33364a;margin-top:6px}
 #smokeBar{height:100%;width:0%;background:linear-gradient(90deg,#7ec98a,#d8d060,#e06a2b,#c22);transition:width .3s}
 #smokeText{font-size:10px;color:#8a8da0;margin-top:2px}
@@ -73,15 +74,28 @@ input#nameInput{font-size:16px;padding:9px 14px;border-radius:10px;border:2px so
 @keyframes shake{0%,100%{transform:translate(0,0)}20%{transform:translate(-6px,3px)}40%{transform:translate(6px,-3px)}60%{transform:translate(-4px,2px)}80%{transform:translate(4px,-2px)}}
 .shaking{animation:shake .3s}
 @media (prefers-reduced-motion: reduce){.shaking{animation:none}}
+/* モーダル共通 */
+.modal{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);backdrop-filter:blur(2px);padding:24px}
+.modal-box{background:linear-gradient(#20222f,#171821);border:1px solid #3a3d52;border-radius:18px;padding:24px 22px;max-width:340px;width:100%;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.6)}
+.modal-title{font-size:19px;font-weight:bold;color:#ffd75e;margin-bottom:10px}
+.modal-msg{font-size:13px;color:#ccd;line-height:1.8;margin-bottom:18px}
+.vol-row{display:flex;align-items:center;gap:12px;margin:14px 4px}
+.vol-row label{font-size:14px;font-weight:bold;color:#9fe8ff;width:56px;text-align:left;flex-shrink:0}
+.vol-row input[type=range]{flex:1;accent-color:#3ec8ff;height:26px}
+/* タイトル画面の追加要素 */
+#a2hs{font-size:12px;color:#9fe8ff;background:rgba(62,200,255,.1);border:1px solid rgba(62,200,255,.3);border-radius:10px;padding:8px 14px;margin:16px 0 6px;line-height:1.7}
+#otherGames{display:inline-block;font-size:14px;font-weight:bold;color:#ffd75e;background:rgba(255,215,94,.1);border:1px solid rgba(255,215,94,.4);border-radius:12px;padding:11px 20px;margin:8px 0;text-decoration:none}
+#otherGames:active{transform:scale(.96)}
 </style>
 </head>
 <body>
 <div id="app">
   <div id="topBar">
     <div id="hudRow">
+      <button id="homeBtn" title="トップに戻る">✕</button>
       <div class="hud-box" id="floorLabel">1F</div>
       <div class="hud-box" id="comboLabel">COMBO 0</div>
-      <button id="bgmBtn">♪ ON</button>
+      <button id="soundBtn" title="音量">🔊</button>
     </div>
     <div id="smokeBarBg"><div id="smokeBar"></div></div>
     <div id="smokeText">副流煙ゲージ（満タンでゲームオーバー）</div>
@@ -105,6 +119,10 @@ input#nameInput{font-size:16px;padding:9px 14px;border-radius:10px;border:2px so
     <p class="tagline">キメ顔喫煙者が積み上がる塔を<br>正論カードで崩壊させろ。<br>弱点を突けばキメ顔が崩れる——</p>
     <button class="btn" id="startBtn">正論バトル開始</button>
     <button class="btn sub" id="howtoBtn">あそびかた</button>
+    <div id="a2hs">📲 共有ボタン →「ホーム画面に追加」で<br>アプリみたいに遊べるよ</div>
+    <a id="otherGames" href="https://godmomorin.github.io/links/" target="_blank" rel="noopener">
+      カイディンディンの他のゲームも遊んでみる？ ▶
+    </a>
     <p class="notice">BGM・効果音が鳴ります／このゲームはフィクションです<br>presented by カイディンディン</p>
   </div>
 
@@ -134,10 +152,37 @@ input#nameInput{font-size:16px;padding:9px 14px;border-radius:10px;border:2px so
       <input id="nameInput" maxlength="10" placeholder="なまえ（10文字まで）">
       <br>
       <button class="btn sub" id="submitBtn">ランキング登録</button>
+      <button class="btn sub" id="viewRankBtn">順位だけ見る</button>
     </div>
     <div id="rankList" class="hidden"></div>
     <button class="btn" id="shareBtn">Xで自慢する</button>
     <button class="btn sub" id="retryBtn">もう一回崩す</button>
+  </div>
+
+  <!-- トップに戻る確認モーダル -->
+  <div id="confirmModal" class="modal hidden">
+    <div class="modal-box">
+      <p class="modal-title">トップに戻る？</p>
+      <p class="modal-msg">今のプレイは中断されます。<br>本当にトップ画面に戻りますか？</p>
+      <button class="btn" id="confirmYes">トップに戻る</button>
+      <button class="btn sub" id="confirmNo">プレイを続ける</button>
+    </div>
+  </div>
+
+  <!-- 音量パネル -->
+  <div id="volModal" class="modal hidden">
+    <div class="modal-box">
+      <p class="modal-title">音量設定</p>
+      <div class="vol-row">
+        <label>BGM</label>
+        <input type="range" id="bgmVol" min="0" max="100" value="60">
+      </div>
+      <div class="vol-row">
+        <label>効果音</label>
+        <input type="range" id="seVol" min="0" max="100" value="80">
+      </div>
+      <button class="btn" id="volClose">とじる</button>
+    </div>
   </div>
 </div>
 
@@ -151,7 +196,7 @@ input#nameInput{font-size:16px;padding:9px 14px;border-radius:10px;border:2px so
 
 /* ---------- 設定 ---------- */
 const SUPABASE_URL = "https://vdjirxautmudhucirieh.supabase.co";
-const SUPABASE_ANON_KEY = ""; // ←anonキーを貼る（空ならランキングOFF）
+const SUPABASE_ANON_KEY = "sb_publishable_o1zhnZlqFXBR-OuVQ49CkA_JX-Rl5Tw";
 const RANKING_ON = SUPABASE_ANON_KEY.length > 0;
 
 const CHAR_IMG={
@@ -259,7 +304,9 @@ window.addEventListener("resize",()=>setTimeout(resize,60));
 /* =========================================================
    Web Audio : SE + BGM
 ========================================================= */
-let AC=null, noiseBuf=null;
+let AC=null, noiseBuf=null, seGain=null, bgmGain=null;
+/* 音量設定（0〜1）。localStorage不可のためメモリ保持 */
+const VOL={se:0.8, bgm:0.6};
 function audio(){
   if(!AC){
     AC=new (window.AudioContext||window.webkitAudioContext)();
@@ -267,11 +314,19 @@ function audio(){
     noiseBuf=AC.createBuffer(1,len,AC.sampleRate);
     const d=noiseBuf.getChannelData(0);
     for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
+    // マスターゲイン（SE用・BGM用を分離）
+    seGain=AC.createGain(); seGain.gain.value=VOL.se; seGain.connect(AC.destination);
+    bgmGain=AC.createGain(); bgmGain.gain.value=VOL.bgm; bgmGain.connect(AC.destination);
   }
   if(AC.state==="suspended")AC.resume();
   return AC;
 }
-function tone(freq,dur,type,vol,delay,slide){
+function applyVolumes(){
+  if(seGain)seGain.gain.value=VOL.se;
+  if(bgmGain)bgmGain.gain.value=VOL.bgm;
+}
+/* bus: "se"(既定) or "bgm" で出力先を切替 */
+function tone(freq,dur,type,vol,delay,slide,bus){
   try{
     const ac=audio(),t=ac.currentTime+(delay||0);
     const o=ac.createOscillator(),g=ac.createGain();
@@ -280,11 +335,11 @@ function tone(freq,dur,type,vol,delay,slide){
     if(slide)o.frequency.exponentialRampToValueAtTime(slide,t+dur);
     g.gain.setValueAtTime(vol||0.15,t);
     g.gain.exponentialRampToValueAtTime(0.001,t+dur);
-    o.connect(g).connect(ac.destination);
+    o.connect(g).connect(bus==="bgm"?bgmGain:seGain);
     o.start(t);o.stop(t+dur+0.02);
   }catch(e){}
 }
-function noise(dur,vol,delay,hp){
+function noise(dur,vol,delay,hp,bus){
   try{
     const ac=audio(),t=ac.currentTime+(delay||0);
     const s=ac.createBufferSource();s.buffer=noiseBuf;
@@ -292,7 +347,7 @@ function noise(dur,vol,delay,hp){
     const g=ac.createGain();
     g.gain.setValueAtTime(vol,t);
     g.gain.exponentialRampToValueAtTime(0.001,t+dur);
-    s.connect(f).connect(g).connect(ac.destination);
+    s.connect(f).connect(g).connect(bus==="bgm"?bgmGain:seGain);
     s.start(t);s.stop(t+dur+0.02);
   }catch(e){}
 }
@@ -306,30 +361,103 @@ const seStart=()=>{[523,659,784,1046].forEach((f,i)=>tone(f,0.12,"square",0.18,i
 const seBoss =()=>{[110,110,104,98].forEach((f,i)=>tone(f,0.4,"sawtooth",0.18,i*0.3));};
 const seJust =()=>{tone(1046,0.08,"square",0.22);tone(1568,0.09,"square",0.2,0.05);tone(2093,0.14,"square",0.18,0.1);tone(1568,0.2,"triangle",0.14,0.14);noise(0.18,0.16,0,true);};
 
-/* ----- BGM：夜のヤニ・ブルース ----- */
-const BGM={on:true,timer:null,step:0};
+/* ----- BGM：夜のヤニ・ブルース（bgmバス経由） ----- */
+const BGM={on:true,timer:null,step:0,interval:140};
 const BASS =[110,0,110,0, 131,0,110,0, 98,0,110,0, 87,98,110,0];   // A-C-G-F系
 const HAT  =[1,0,1,1, 1,0,1,0, 1,0,1,1, 1,0,1,1];
 const MELO =[0,0,330,0, 392,0,0,294, 0,330,0,0, 262,0,220,0];
 function bgmStep(){
   if(!BGM.on)return;
   const i=BGM.step%16;
-  if(BASS[i])tone(BASS[i],0.22,"triangle",0.11);
-  if(HAT[i])noise(0.04,0.03,0,true);
-  if(MELO[i]&&Math.random()<0.85)tone(MELO[i],0.18,"square",0.045);
-  if(i===0&&Math.random()<0.3)tone(55,0.5,"sine",0.1);
+  if(BASS[i])tone(BASS[i],0.22,"triangle",0.11,0,0,"bgm");
+  if(HAT[i])noise(0.04,0.03,0,true,"bgm");
+  if(MELO[i]&&Math.random()<0.85)tone(MELO[i],0.18,"square",0.045,0,0,"bgm");
+  if(i===0&&Math.random()<0.3)tone(55,0.5,"sine",0.1,0,0,"bgm");
   BGM.step++;
+}
+/* 階層に応じたテンポ（10階ごとに速くなる）。intervalが小さいほど速い */
+function bgmIntervalFor(floor){
+  const steps=Math.floor((floor-1)/10); // 0,1,2,...
+  return Math.max(90, 140 - steps*12);   // 140→128→116…下限90ms
 }
 function bgmStart(){
   audio();
   if(BGM.timer)clearInterval(BGM.timer);
-  BGM.timer=setInterval(bgmStep,140); // ≒107BPM 8分
+  BGM.interval=bgmIntervalFor(state&&state.floor?state.floor:1);
+  BGM.timer=setInterval(bgmStep,BGM.interval);
 }
 function bgmStop(){ if(BGM.timer){clearInterval(BGM.timer);BGM.timer=null;} }
-$("bgmBtn").addEventListener("click",()=>{
-  BGM.on=!BGM.on;
-  $("bgmBtn").textContent=BGM.on?"♪ ON":"♪ OFF";
-  if(BGM.on&&state.phase!=="title")bgmStart();else bgmStop();
+/* テンポを現在の階層に合わせて更新（変化時のみ再設定） */
+function bgmUpdateTempo(){
+  if(!BGM.on||!BGM.timer)return;
+  const want=bgmIntervalFor(state.floor);
+  if(want!==BGM.interval){
+    BGM.interval=want;
+    clearInterval(BGM.timer);
+    BGM.timer=setInterval(bgmStep,BGM.interval);
+  }
+}
+/* ===== 一時停止／再開（ピック中のみ、残り時間を保持） ===== */
+let pausedByModal=false;
+function pauseGame(){
+  if(state.phase==="pick"){
+    pausedByModal=true;
+    state._pausedRemain=currentRemain(); // 残り割合を保存
+    state.phase="paused";
+    stopTimer();
+    bgmStop();
+  }
+}
+function resumeGame(){
+  if(state.phase==="paused"&&pausedByModal){
+    pausedByModal=false;
+    state.phase="pick";
+    if(BGM.on)bgmStart();
+    // 保存した残り時間から再開（時間回復させない）
+    const rem=typeof state._pausedRemain==="number"?state._pausedRemain:1;
+    startTimer(rem);
+  }
+}
+/* ===== トップに戻る（2段階確認） ===== */
+function goTitle(){
+  stopTimer();bgmStop();
+  $("timerWrap").classList.add("hide");
+  $("confirmModal").classList.add("hidden");
+  $("volModal").classList.add("hidden");
+  $("resultScreen").classList.add("hidden");
+  $("howtoScreen").classList.add("hidden");
+  $("titleScreen").classList.remove("hidden");
+  if(state)state.phase="title";
+  pausedByModal=false;
+}
+$("homeBtn").addEventListener("click",()=>{
+  if(!state||state.phase==="title"){return;}
+  if(state.phase==="over"){goTitle();return;}
+  if(state.phase==="pick")pauseGame();
+  $("confirmModal").classList.remove("hidden");
+});
+$("confirmYes").addEventListener("click",goTitle);
+$("confirmNo").addEventListener("click",()=>{
+  $("confirmModal").classList.add("hidden");
+  resumeGame();
+});
+/* ===== 音量パネル ===== */
+$("soundBtn").addEventListener("click",()=>{
+  audio(); // 初回タップで音声起動
+  $("bgmVol").value=Math.round(VOL.bgm*100);
+  $("seVol").value=Math.round(VOL.se*100);
+  // ゲーム中に開いたら一時停止
+  if(state&&state.phase==="pick")pauseGame();
+  $("volModal").classList.remove("hidden");
+});
+$("bgmVol").addEventListener("input",e=>{VOL.bgm=e.target.value/100;applyVolumes();});
+$("seVol").addEventListener("input",e=>{
+  VOL.se=e.target.value/100;applyVolumes();
+});
+$("seVol").addEventListener("change",()=>{ seWeak(); }); // 離した時に試聴
+$("volClose").addEventListener("click",()=>{
+  $("volModal").classList.add("hidden");
+  resumeGame();
 });
 
 /* =========================================================
@@ -398,19 +526,29 @@ function timerDurationFor(){
   const extra=f>10 ? (f-10)*70 : 0;      // 11F以降さらに加速
   return Math.max(1200, base-extra);
 }
-function startTimer(){
+function startTimer(resumeRatio){
   stopTimer();
   const wrap=$("timerWrap"),bar=$("timerBar"),just=$("timerJust");
   wrap.classList.remove("hide");
+  const resuming = typeof resumeRatio==="number";
   state.timerDur=timerDurationFor();
-  state.timerStart=performance.now();
+  // 再開時は残り割合ぶんだけ経過済みとして開始時刻を巻き戻す
+  if(resuming){
+    const elapsed=(1-resumeRatio)*state.timerDur;
+    state.timerStart=performance.now()-elapsed;
+  }else{
+    state.timerStart=performance.now();
+  }
   state.timerActive=true;
-  // ジャストゾーン（残り18〜32%位置＝バー左側の狭い緑帯）
-  const jStart=14+Math.random()*8; // %
-  const jW=12;
-  just.style.left=jStart+"%";
-  just.style.width=jW+"%";
-  state._justLo=jStart/100; state._justHi=(jStart+jW)/100;
+  // ジャストゾーンは新規ターンのみ抽選（再開時は前の位置を維持）
+  if(!resuming){
+    const jStart=14+Math.random()*8; // %
+    const jW=12;
+    just.style.left=jStart+"%";
+    just.style.width=jW+"%";
+    state._justLo=jStart/100; state._justHi=(jStart+jW)/100;
+    state._warned=false;state._warned2=false;
+  }
   const tick=()=>{
     if(!state.timerActive)return;
     const el=performance.now()-state.timerStart;
@@ -422,7 +560,6 @@ function startTimer(){
     if(r<=0){ timeUp(); return; }
     state.timerId=requestAnimationFrame(tick);
   };
-  state._warned=false;state._warned2=false;
   state.timerId=requestAnimationFrame(tick);
 }
 function stopTimer(){
@@ -510,7 +647,7 @@ function afterAttack(){
     if(state.enemy.type!=="boss"){dex[state.enemy.type]=state.enemy;state.seen[state.enemy.type]=true;}
     seFall();startFall();
     setTimeout(()=>{
-      state.floor++;updateHud();spawnEnemy();state.phase="pick";
+      state.floor++;updateHud();bgmUpdateTempo();spawnEnemy();state.phase="pick";
     },1000);
   }else{
     state.faceBreak=0;
@@ -970,30 +1107,45 @@ async function submitScore(){
   if(!RANKING_ON)return;
   const name=($("nameInput").value||"名無しの正論").slice(0,10);
   $("submitBtn").disabled=true;
+  $("submitBtn").textContent="送信中…";
   try{
-    await fetch(`${SUPABASE_URL}/rest/v1/rpc/yt_submit`,{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/yt_submit`,{
       method:"POST",
       headers:{"Content-Type":"application/json","apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY},
       body:JSON.stringify({p_name:name,p_score:calcScore(),p_floor:state.floor})
     });
+    if(!res.ok)throw new Error("submit failed");
+    $("rankArea").classList.add("hidden"); // 二重登録防止
     await loadRanking();
-  }catch(e){}
-  $("submitBtn").disabled=false;
+  }catch(e){
+    $("submitBtn").disabled=false;
+    $("submitBtn").textContent="もう一度登録";
+    const l=$("rankList");
+    l.innerHTML='<div style="color:#ff9db0;text-align:center">通信エラー。電波を確認して再度お試しを</div>';
+    l.classList.remove("hidden");
+  }
 }
 async function loadRanking(){
+  const list=$("rankList");
+  list.innerHTML='<div style="text-align:center;color:#9fe8ff">ランキング取得中…</div>';
+  list.classList.remove("hidden");
   try{
     const res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/yt_top`,{
       method:"POST",
       headers:{"Content-Type":"application/json","apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY},
       body:JSON.stringify({})
     });
+    if(!res.ok)throw new Error("load failed");
     const rows=await res.json();
-    const list=$("rankList");
-    list.innerHTML=rows.map((r,i)=>
-      `<div class="row"><span>${i+1}位 ${escapeHtml(r.name)}</span><span>${r.floor}F / ${r.score}</span></div>`
-    ).join("")||"まだ誰もいない…";
-    list.classList.remove("hidden");
-  }catch(e){}
+    const myScore=calcScore();
+    list.innerHTML=(rows||[]).map((r,i)=>{
+      const medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":(i+1)+"位";
+      const mine=(r.score===myScore)?" me":"";
+      return `<div class="row${mine}"><span>${medal} ${escapeHtml(r.name)}</span><span>${r.floor}F / ${r.score}</span></div>`;
+    }).join("")||'<div style="text-align:center;color:#aaa">まだ誰もいない…一番乗りだ！</div>';
+  }catch(e){
+    list.innerHTML='<div style="color:#ff9db0;text-align:center">ランキング取得に失敗。あとで見てね</div>';
+  }
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function share(){
@@ -1010,6 +1162,12 @@ function startGame(){
   state.startTime=Date.now();
   $("titleScreen").classList.add("hidden");
   $("resultScreen").classList.add("hidden");
+  // ランキングUIをリセット
+  $("submitBtn").disabled=false;
+  $("submitBtn").textContent="ランキング登録";
+  $("rankArea").classList.toggle("hidden",!RANKING_ON);
+  $("rankList").classList.add("hidden");
+  $("nameInput").value="";
   resize();
   spawnEnemy();
   state.phase="pick";
@@ -1021,6 +1179,7 @@ $("howtoBtn").addEventListener("click",()=>{$("titleScreen").classList.add("hidd
 $("backBtn").addEventListener("click",()=>{$("howtoScreen").classList.add("hidden");$("titleScreen").classList.remove("hidden");});
 $("shareBtn").addEventListener("click",share);
 $("submitBtn").addEventListener("click",submitScore);
+$("viewRankBtn").addEventListener("click",loadRanking);
 
 /* ---------- 起動 ---------- */
 state=newState();
