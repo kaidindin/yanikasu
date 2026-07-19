@@ -129,7 +129,7 @@ input#nameInput{font-size:16px;padding:9px 14px;border-radius:10px;border:2px so
       <div id="titleRankHead">🏆 正論マスターランキング</div>
       <div id="titleRankList">読み込み中…</div>
     </div>
-    <div id="a2hs">📲 共有ボタン →「ホーム画面に追加」で<br>アプリみたいに遊べるよ</div>
+    <div id="a2hs">📲 Safariの共有ボタン →「ホーム画面に追加」で<br>アプリみたいに遊べるよ</div>
     <a id="otherGames" href="https://godmomorin.github.io/links/" target="_blank" rel="noopener">
       カイディンディンの他のゲームも遊んでみる？ ▶
     </a>
@@ -1128,14 +1128,6 @@ function drawScene(t){
       roundRect(cx-tw/2,feetY-h-44,tw,16,8);ctx.fill();
       ctx.fillStyle="#ffd75e";ctx.textAlign="center";
       ctx.fillText(nm,cx,feetY-h-32);
-    }
-    // 塔の高さ表示（積み上がり感の可視化）
-    if(floorsCleared>0){
-      ctx.save();
-      ctx.fillStyle="rgba(255,215,94,.9)";
-      ctx.font="bold 13px sans-serif";ctx.textAlign="left";
-      ctx.fillText(`🏗 ${floorsCleared}体の塔`, 12, groundY-4);
-      ctx.restore();
     }
   }
   drawParticles();
