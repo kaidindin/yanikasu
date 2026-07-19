@@ -550,12 +550,13 @@ function renderCards(){
 
 /* ---------- 制限時間バー（階層でシビアに） ---------- */
 function timerDurationFor(){
-  // 1F=4.0秒スタート。階ごとに短縮し、上限フロアで1.2秒まで詰まる。
-  // 序盤ゆったり→中盤以降きつくなる二段カーブ
+  // 1F=3.7秒スタート。階ごとに短縮。中盤以降きつくなる多段カーブ。
   const f=state.floor;
-  const base=4000-(f-1)*130;            // 1階ごと0.13秒短縮
+  const base=3700-(f-1)*130;            // 1階ごと0.13秒短縮
   const extra=f>10 ? (f-10)*70 : 0;      // 11F以降さらに加速
-  return Math.max(1200, base-extra);
+  let d=Math.max(900, base-extra);       // 20F付近で0.9秒
+  if(f>=25) d=Math.min(d, 700);          // 25F以降は0.7秒でさらにシビア
+  return d;
 }
 function startTimer(resumeRatio){
   stopTimer();
@@ -991,22 +992,29 @@ function lighten(hex,amt){
 }
 
 /* ---------- 撃破残骸（つぶれた喫煙者の山） ---------- */
-function drawRubble(x,y,w,i){
+function drawRubble(x,y,w,i,total){
   ctx.save();
   ctx.translate(x+(i%2?7:-7),y);
   ctx.rotate((i%2?1:-1)*0.045);
   roundRect(-w/2,-13,w,26,8);
+  // 下の段（iが小さい）ほど暗く＝古く潰れた印象で奥行きを出す
+  const shade=Math.min(1,i/6);
+  const top=`rgb(${45+shade*20},${47+shade*20},${64+shade*20})`;
+  const bot=`rgb(${34+shade*15},${36+shade*15},${48+shade*15})`;
   const rg=ctx.createLinearGradient(0,-13,0,13);
-  rg.addColorStop(0,"#3d3f50");rg.addColorStop(1,"#2c2e3c");
+  rg.addColorStop(0,top);rg.addColorStop(1,bot);
   shape(rg,2);
-  // つぶれ顔
+  // つぶれ×目
   ctx.strokeStyle="#666";ctx.lineWidth=2;
   ctx.beginPath();ctx.moveTo(-w/2+12,-3);ctx.lineTo(-w/2+20,3);ctx.stroke();
   ctx.beginPath();ctx.moveTo(-w/2+20,-3);ctx.lineTo(-w/2+12,3);ctx.stroke();
   ctx.beginPath();ctx.moveTo(-w/2+28,-3);ctx.lineTo(-w/2+36,3);ctx.stroke();
   ctx.beginPath();ctx.moveTo(-w/2+36,-3);ctx.lineTo(-w/2+28,3);ctx.stroke();
-  ctx.fillStyle="#888";ctx.font="bold 10px sans-serif";ctx.textAlign="right";
-  ctx.fillText("撃破済",w/2-10,4);
+  // 一番上の段だけ「撃破済」表示（下の段は文字を省いてスッキリ）
+  if(i>=Math.min(6,(total||1)-1)-1){
+    ctx.fillStyle="#999";ctx.font="bold 10px sans-serif";ctx.textAlign="right";
+    ctx.fillText("撃破済",w/2-10,4);
+  }
   ctx.restore();
 }
 function drawHpBar(x,y){
@@ -1086,10 +1094,20 @@ function drawScene(t){
   if(state&&state.enemy){
     const cx=W/2;
     const groundY=H-26;
-    const stack=Math.min(5,Math.max(0,state.floor-1-(state.fallers.length?1:0)));
-    for(let i=0;i<stack;i++)drawRubble(cx,groundY-14-i*27,128-i*13,i);
-    const towerTop=groundY-stack*27-4;
-    const charH=Math.min(230,Math.max(150,H*0.34)); // 画面に応じた全身高さ
+    const floorsCleared=Math.max(0,state.floor-1-(state.fallers.length?1:0));
+    // 見せる段数は最大7段。それ以上は塔が画面下へ潜り込んでいく表現
+    const visibleStack=Math.min(7,floorsCleared);
+    const stepH=24; // 1段の高さ
+    // 塔が下へ潜り込むオフセット（8段目以降、少しずつ沈める）
+    const sink=floorsCleared>7 ? Math.min(60,(floorsCleared-7)*3) : 0;
+    // 残骸を下から積む（下の段ほど幅広＝遠近感）
+    for(let i=0;i<visibleStack;i++){
+      const ry=groundY-12-i*stepH+sink;
+      const rw=138-i*11;
+      drawRubble(cx,ry,rw,i,floorsCleared);
+    }
+    const towerTop=groundY-visibleStack*stepH-4+sink;
+    const charH=Math.min(230,Math.max(150,H*0.34));
     state.fallers.forEach(f=>drawSmoker(f.x,f.y,charH,f.type,1,f.rot,t));
     if(state.phase!=="over"&&state.phase!=="title"){
       const h=state.enemy.type==="boss"?charH*1.05:charH;
@@ -1106,6 +1124,14 @@ function drawScene(t){
       roundRect(cx-tw/2,feetY-h-44,tw,16,8);ctx.fill();
       ctx.fillStyle="#ffd75e";ctx.textAlign="center";
       ctx.fillText(nm,cx,feetY-h-32);
+    }
+    // 塔の高さ表示（積み上がり感の可視化）
+    if(floorsCleared>0){
+      ctx.save();
+      ctx.fillStyle="rgba(255,215,94,.9)";
+      ctx.font="bold 13px sans-serif";ctx.textAlign="left";
+      ctx.fillText(`🏗 ${floorsCleared}体の塔`, 12, groundY-4);
+      ctx.restore();
     }
   }
   drawParticles();
