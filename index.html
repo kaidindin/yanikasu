@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>ヤニカスの塔 - 正論で崩す喫煙者バトル</title>
+<meta name="description" content="キメ顔喫煙者が積み上がる塔を正論カードで崩すバトルゲーム。弱点を突いてキメ顔を崩壊させろ。何階まで崩せるかランキングで競おう。">
+<meta property="og:title" content="ヤニカスの塔">
+<meta property="og:description" content="正論カードで喫煙者の塔を崩すバトルゲーム。弱点を突いてキメ顔を崩壊させろ！">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kaidindin.github.io/yanikasu-tower/">
+<meta name="twitter:card" content="summary">
+<meta name="theme-color" content="#0c0d16">
+<link rel="manifest" href='data:application/manifest+json,{"name":"ヤニカスの塔","short_name":"ヤニカスの塔","start_url":".","display":"standalone","background_color":"%230c0d16","theme_color":"%230c0d16"}'>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"VideoGame","name":"ヤニカスの塔","author":{"@type":"Person","name":"カイディンディン"},"genre":"バトル,ギャグ","inLanguage":"ja","url":"https://kaidindin.github.io/yanikasu-tower/"}
+</script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+html,body{height:100%;overflow:hidden;background:#0c0d16;font-family:"Hiragino Maru Gothic ProN","Hiragino Sans",system-ui,sans-serif;color:#eee}
+#app{position:fixed;top:0;left:0;right:0;height:100%;height:100dvh;display:flex;flex-direction:column;max-width:520px;margin:0 auto}
+/* ---------- 上部HUD（通常フロー） ---------- */
+#topBar{padding:calc(8px + env(safe-area-inset-top)) 10px 6px;background:linear-gradient(#181a28,#12131e);border-bottom:1px solid #262838;z-index:5}
+#hudRow{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.hud-box{background:rgba(0,0,0,.45);border:1px solid #2c2f42;border-radius:9px;padding:4px 10px;font-size:12px;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#floorLabel{color:#ffd75e;font-size:14px;flex:1}
+#comboLabel{color:#9fe8ff}
+#bgmBtn{background:rgba(0,0,0,.45);border:1px solid #2c2f42;border-radius:9px;color:#ddd;font-size:14px;padding:4px 8px;cursor:pointer}
+#smokeBarBg{height:12px;background:rgba(0,0,0,.55);border-radius:6px;overflow:hidden;border:1px solid #33364a;margin-top:6px}
+#smokeBar{height:100%;width:0%;background:linear-gradient(90deg,#7ec98a,#d8d060,#e06a2b,#c22);transition:width .3s}
+#smokeText{font-size:10px;color:#8a8da0;margin-top:2px}
+/* ---------- canvas ---------- */
+#stage{position:relative;flex:1;min-height:0}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+#enemyTalk{position:absolute;left:50%;transform:translateX(-50%);top:12%;background:#fdfdf6;color:#222;font-size:13px;font-weight:bold;padding:8px 14px;border-radius:14px;z-index:6;max-width:82%;opacity:0;transition:opacity .25s;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+#enemyTalk:after{content:"";position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);border:8px solid transparent;border-top-color:#fdfdf6;border-bottom:0}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:8;transition:opacity .08s}
+/* ---------- カードUI ---------- */
+#cardArea{flex-shrink:0;padding:6px 8px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(#12131e,#0a0b12);border-top:1px solid #262838;z-index:4}
+/* 制限時間バー */
+#timerWrap{position:relative;height:14px;margin:0 4px 6px;border-radius:7px;background:#0a0d16;border:1px solid #33364a;overflow:hidden}
+#timerJust{position:absolute;top:0;height:100%;background:repeating-linear-gradient(45deg,rgba(126,231,135,.55),rgba(126,231,135,.55) 6px,rgba(126,231,135,.3) 6px,rgba(126,231,135,.3) 12px);border-left:1px solid #7ee787;border-right:1px solid #7ee787;pointer-events:none}
+#timerBar{height:100%;width:100%;background:linear-gradient(90deg,#ff5a5a,#ffd75e,#7ee787);transform-origin:left}
+#timerWrap.hide{visibility:hidden}
+#turnMsg{text-align:center;font-size:12px;color:#9fe8ff;font-weight:bold;height:18px;margin-bottom:5px}
+#cards{display:flex;gap:7px;justify-content:center}
+.card{flex:1;max-width:150px;background:linear-gradient(#243248,#151f2e);border:2px solid #3ec8ff;border-radius:11px;padding:8px 6px;text-align:center;cursor:pointer;box-shadow:0 0 10px rgba(62,200,255,.22),0 3px 0 #0a1520;transition:transform .1s}
+.card:active{transform:scale(.94)}
+.card .attr{display:inline-block;font-size:10px;font-weight:bold;padding:2px 8px;border-radius:8px;margin-bottom:4px;color:#111}
+.card .txt{font-size:12px;font-weight:bold;line-height:1.45;color:#e8f6ff;min-height:42px;display:flex;align-items:center;justify-content:center}
+.card.disabled{pointer-events:none;opacity:.5}
+.attr-health{background:#7ee787}.attr-money{background:#ffd75e}.attr-smell{background:#c8a2ff}.attr-dasai{background:#ff9db0}.attr-special{background:#fff}
+.card.special{border-color:#fff;box-shadow:0 0 16px rgba(255,255,255,.6),0 3px 0 #0a1520}
+/* ---------- 画面（オーバーレイ） ---------- */
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;background:radial-gradient(circle at 50% 30%,#242539 0%,#0e0f18 75%);z-index:10;overflow-y:auto}
+.hidden{display:none!important}
+h1.logo{font-size:42px;line-height:1.2;letter-spacing:2px;color:#ffd75e;text-shadow:0 3px 0 #7a5b00,0 6px 18px rgba(0,0,0,.7);margin-bottom:4px}
+.logo small{display:block;font-size:13px;color:#9fe8ff;letter-spacing:6px;text-shadow:none;margin-top:8px}
+.tagline{font-size:13px;color:#aab;margin:10px 0 24px;line-height:1.9}
+.btn{display:inline-block;font-size:17px;font-weight:bold;padding:13px 34px;margin:7px;border:none;border-radius:14px;background:linear-gradient(#4fd6ff,#1e8fd6);color:#04263a;box-shadow:0 4px 0 #0d5f96,0 8px 16px rgba(0,0,0,.5);cursor:pointer}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #0d5f96}
+.btn.sub{background:linear-gradient(#555,#333);color:#ddd;box-shadow:0 4px 0 #111;font-size:13px;padding:10px 22px}
+.result-num{font-size:50px;color:#ffd75e;font-weight:bold;text-shadow:0 3px 0 #7a5b00}
+.result-sub{font-size:13px;color:#bbb;margin:4px 0 14px;line-height:1.9}
+#rankList{width:100%;max-width:340px;margin:12px auto;background:rgba(0,0,0,.35);border-radius:12px;padding:10px 14px;font-size:13px;text-align:left;max-height:160px;overflow-y:auto}
+#rankList .row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #333}
+#rankList .row:last-child{border-bottom:none}
+input#nameInput{font-size:16px;padding:9px 14px;border-radius:10px;border:2px solid #3ec8ff;background:#0e1620;color:#fff;text-align:center;width:200px;margin-bottom:6px}
+.notice{font-size:10px;color:#667;margin-top:14px;line-height:1.7}
+@keyframes shake{0%,100%{transform:translate(0,0)}20%{transform:translate(-6px,3px)}40%{transform:translate(6px,-3px)}60%{transform:translate(-4px,2px)}80%{transform:translate(4px,-2px)}}
+.shaking{animation:shake .3s}
+@media (prefers-reduced-motion: reduce){.shaking{animation:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topBar">
+    <div id="hudRow">
+      <div class="hud-box" id="floorLabel">1F</div>
+      <div class="hud-box" id="comboLabel">COMBO 0</div>
+      <button id="bgmBtn">♪ ON</button>
+    </div>
+    <div id="smokeBarBg"><div id="smokeBar"></div></div>
+    <div id="smokeText">副流煙ゲージ（満タンでゲームオーバー）</div>
+  </div>
+
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="enemyTalk"></div>
+    <div id="flash"></div>
+  </div>
+
+  <div id="cardArea">
+    <div id="timerWrap"><div id="timerJust"></div><div id="timerBar"></div></div>
+    <div id="turnMsg">正論カードを選べ！</div>
+    <div id="cards"></div>
+  </div>
+
+  <!-- タイトル画面 -->
+  <div id="titleScreen" class="screen">
+    <h1 class="logo">ヤニカスの塔<small>SEIRON TOWER BATTLE</small></h1>
+    <p class="tagline">キメ顔喫煙者が積み上がる塔を<br>正論カードで崩壊させろ。<br>弱点を突けばキメ顔が崩れる——</p>
+    <button class="btn" id="startBtn">正論バトル開始</button>
+    <button class="btn sub" id="howtoBtn">あそびかた</button>
+    <p class="notice">BGM・効果音が鳴ります／このゲームはフィクションです<br>presented by カイディンディン</p>
+  </div>
+
+  <!-- あそびかた -->
+  <div id="howtoScreen" class="screen hidden">
+    <h2 style="color:#ffd75e;margin-bottom:14px">あそびかた</h2>
+    <p style="font-size:13px;line-height:1.85;text-align:left;max-width:330px">
+    ・3枚の正論カードから1枚選んで攻撃<br>
+    ・弱点属性（<span style="color:#7ee787">健康</span>／<span style="color:#ffd75e">金銭</span>／<span style="color:#c8a2ff">臭い</span>／<span style="color:#ff9db0">ダサい</span>）を突けば大ダメージ<br>
+    ・<b style="color:#9fe8ff">弱点は敵のセリフから読め！</b>倒せば図鑑に記録<br>
+    ・<b style="color:#ff5a5a">制限時間はシビア。</b>尽きると自動ミス＝反撃の副流煙<br>
+    ・バー右端の<span style="color:#7ee787">緑ゾーン</span>で押すと<b>ジャスト（会心）</b><br>
+    ・弱点連続でコンボ倍率 ×1.5→×2→×3…<br>
+    ・効かない属性を選ぶと副流煙ゲージ上昇<br>
+    ・ゲージ満タンでゲームオーバー<br>
+    ・10Fごとのボス「喫煙所の主」は<b>「禁煙外来」</b>のみ有効<br>
+    ・スコア＝階層＋コンボ＋ジャスト＋速さ</p>
+    <button class="btn" id="backBtn">もどる</button>
+  </div>
+
+  <!-- リザルト -->
+  <div id="resultScreen" class="screen hidden">
+    <h2 style="color:#ff9db0;font-size:21px;margin-bottom:2px">煙に巻かれた…</h2>
+    <div class="result-num" id="resFloor">1F</div>
+    <div class="result-sub" id="resDetail"></div>
+    <div id="rankArea">
+      <input id="nameInput" maxlength="10" placeholder="なまえ（10文字まで）">
+      <br>
+      <button class="btn sub" id="submitBtn">ランキング登録</button>
+    </div>
+    <div id="rankList" class="hidden"></div>
+    <button class="btn" id="shareBtn">Xで自慢する</button>
+    <button class="btn sub" id="retryBtn">もう一回崩す</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =========================================================
+   ヤニカスの塔 v2 - 正論タワーバトル
+   単一HTML / canvas / Web Audio(BGM+SE) / Supabaseランキング
+   presented by カイディンディン
+========================================================= */
+
+/* ---------- 設定 ---------- */
+const SUPABASE_URL = "https://vdjirxautmudhucirieh.supabase.co";
+const SUPABASE_ANON_KEY = ""; // ←anonキーを貼る（空ならランキングOFF）
+const RANKING_ON = SUPABASE_ANON_KEY.length > 0;
+
+const CHAR_IMG={
+  ikiri:"ikiri.png",
+  vape:"vape.png",
+  aruki:"aruki.png",
+  senpai:"senpai.png",
+  kanki:"kanki.png",
+  bucho:"bucho.png",
+  boss:"boss.png",
+};
+
+/* ---------- キャラ画像プリロード ---------- */
+const CHAR_IMG_OBJ = {};
+let imgLoaded = 0;
+const imgKeys = Object.keys(CHAR_IMG);
+imgKeys.forEach(k=>{
+  const im = new Image();
+  im.onload = ()=>{ imgLoaded++; };
+  im.src = CHAR_IMG[k];
+  CHAR_IMG_OBJ[k] = im;
+});
+
+/* ---------- 属性 ---------- */
+const ATTRS = {
+  health:{name:"健康", cls:"attr-health", color:"#7ee787"},
+  money:{name:"金銭", cls:"attr-money", color:"#ffd75e"},
+  smell:{name:"臭い", cls:"attr-smell", color:"#c8a2ff"},
+  dasai:{name:"ダサい", cls:"attr-dasai", color:"#ff9db0"},
+  special:{name:"特殊", cls:"attr-special", color:"#ffffff"}
+};
+
+/* ---------- 正論カードプール ---------- */
+const CARD_POOL = {
+  health:[
+    "肺、真っ黒ですよ","タール、沈着してますよ","1本で寿命10分縮むらしいですよ",
+    "健康診断の紙、見ました？","階段で息切れしてましたよね"
+  ],
+  money:[
+    "1箱600円、年間22万円ですよ","半分くらい税金吸ってますよ","その金でうまいもん食えますよ",
+    "ライター何個買いました？","禁煙したら旅行行けますよ"
+  ],
+  smell:[
+    "服に臭い、移るんで","息が灰皿なんですよ","エレベーター一緒はキツいです",
+    "3歩先から分かりますよ","会議室に残り香すごいです"
+  ],
+  dasai:[
+    "そのキメ顔、誰も見てないです","昭和で時間止まってますよ","煙たなびかせてもモテません",
+    "壁ドン喫煙、ダサいです","「フッ…」って言うのやめません？"
+  ],
+  special:["禁煙外来、予約しときました"]
+};
+
+/* ---------- 敵データ ---------- */
+/* talk=弱点を匂わせるセリフ / hintWord=図鑑に載る弱点の一言 */
+const ENEMIES = [
+  {name:"イキりおじさん", weak:"dasai", resist:"health", type:"ikiri",
+    talk:"どうだ、この吸い方キマってるだろ？", hint:"かっこつけてるだけ。ダサさを突け"},
+  {name:"電子タバコくん", weak:"health", resist:"smell", type:"vape",
+    talk:"電子だから体に無害っしょ？", hint:"無害と思い込んでる。健康被害を突け"},
+  {name:"歩きタバコの人", weak:"smell", resist:"dasai", type:"aruki",
+    talk:"歩きタバコの何が悪いの？煙残らんし", talkAlt:"え、俺くさい…？", hint:"臭いの自覚がない。臭いを突け"},
+  {name:"新人の前で吸う先輩", weak:"money", resist:"dasai", type:"senpai",
+    talk:"社会人なら一服の金くらい余裕だろ？", hint:"金を軽く見てる。金銭を突け"},
+  {name:"換気扇の下の主張", weak:"smell", resist:"money", type:"kanki",
+    talk:"換気扇の下なら臭わんだろ、な？", hint:"臭いを気にしてる。臭いを突け"},
+  {name:"タバコミュニケーション部長", weak:"money", resist:"health", type:"bucho",
+    talk:"喫煙所の一服も立派な経費だよ", hint:"金の話に弱い。金銭を突け"}
+];
+const BOSS = {name:"喫煙所の主", weak:"special", resist:"all", type:"boss",
+  talk:"ワシに正論など通じん…", hint:"正論無効。禁煙外来のみ有効"};
+
+/* ---------- 状態 ---------- */
+let state=null;
+function newState(){
+  return {
+    floor:1, combo:0, maxCombo:0, totalDmg:0, smoke:0,
+    enemy:null, enemyHp:0, enemyMaxHp:0,
+    phase:"title", particles:[], fallers:[],
+    faceBreak:0, hitTimer:0, startTime:0,
+    seen:{},            // 撃破済み図鑑 {type:true}
+    justCount:0,        // ジャスト成功数
+    timeBonus:0,        // 速さボーナス累計
+    // タイマー
+    timerId:null, timerStart:0, timerDur:0, timerActive:false
+  };
+}
+/* 図鑑は1プレイ跨いで保持したいのでグローバルにも記録 */
+let dex={};
+
+/* ---------- DOM/canvas ---------- */
+const $=id=>document.getElementById(id);
+const cv=$("cv"), ctx=cv.getContext("2d");
+let W=0,H=0,DPR=1;
+function resize(){
+  DPR=Math.min(window.devicePixelRatio||1,2);
+  const r=cv.getBoundingClientRect();
+  W=r.width;H=r.height;
+  cv.width=Math.max(1,W*DPR);cv.height=Math.max(1,H*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  buildCity();
+}
+window.addEventListener("resize",()=>setTimeout(resize,60));
+
+/* =========================================================
+   Web Audio : SE + BGM
+========================================================= */
+let AC=null, noiseBuf=null;
+function audio(){
+  if(!AC){
+    AC=new (window.AudioContext||window.webkitAudioContext)();
+    const len=AC.sampleRate*0.5;
+    noiseBuf=AC.createBuffer(1,len,AC.sampleRate);
+    const d=noiseBuf.getChannelData(0);
+    for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
+  }
+  if(AC.state==="suspended")AC.resume();
+  return AC;
+}
+function tone(freq,dur,type,vol,delay,slide){
+  try{
+    const ac=audio(),t=ac.currentTime+(delay||0);
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.type=type||"square";
+    o.frequency.setValueAtTime(freq,t);
+    if(slide)o.frequency.exponentialRampToValueAtTime(slide,t+dur);
+    g.gain.setValueAtTime(vol||0.15,t);
+    g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    o.connect(g).connect(ac.destination);
+    o.start(t);o.stop(t+dur+0.02);
+  }catch(e){}
+}
+function noise(dur,vol,delay,hp){
+  try{
+    const ac=audio(),t=ac.currentTime+(delay||0);
+    const s=ac.createBufferSource();s.buffer=noiseBuf;
+    const f=ac.createBiquadFilter();f.type=hp?"highpass":"lowpass";f.frequency.value=hp?4000:900;
+    const g=ac.createGain();
+    g.gain.setValueAtTime(vol,t);
+    g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    s.connect(f).connect(g).connect(ac.destination);
+    s.start(t);s.stop(t+dur+0.02);
+  }catch(e){}
+}
+const seHit  =()=>{tone(200,0.09,"square",0.18);noise(0.08,0.12);};
+const seWeak =()=>{tone(880,0.09,"square",0.2);tone(1320,0.1,"square",0.18,0.06);tone(1760,0.18,"square",0.16,0.12);noise(0.15,0.15,0,true);};
+const seMiss =()=>{tone(180,0.25,"sawtooth",0.16,0,90);};
+const seFall =()=>{for(let i=0;i<6;i++){tone(420-i*55,0.1,"square",0.14,i*0.06);}noise(0.35,0.2,0.25);};
+const seSmoke=()=>{noise(0.4,0.12);tone(90,0.35,"sawtooth",0.1);};
+const seOver =()=>{[330,262,220,165].forEach((f,i)=>tone(f,0.32,"triangle",0.2,i*0.22));};
+const seStart=()=>{[523,659,784,1046].forEach((f,i)=>tone(f,0.12,"square",0.18,i*0.09));};
+const seBoss =()=>{[110,110,104,98].forEach((f,i)=>tone(f,0.4,"sawtooth",0.18,i*0.3));};
+const seJust =()=>{tone(1046,0.08,"square",0.22);tone(1568,0.09,"square",0.2,0.05);tone(2093,0.14,"square",0.18,0.1);tone(1568,0.2,"triangle",0.14,0.14);noise(0.18,0.16,0,true);};
+
+/* ----- BGM：夜のヤニ・ブルース ----- */
+const BGM={on:true,timer:null,step:0};
+const BASS =[110,0,110,0, 131,0,110,0, 98,0,110,0, 87,98,110,0];   // A-C-G-F系
+const HAT  =[1,0,1,1, 1,0,1,0, 1,0,1,1, 1,0,1,1];
+const MELO =[0,0,330,0, 392,0,0,294, 0,330,0,0, 262,0,220,0];
+function bgmStep(){
+  if(!BGM.on)return;
+  const i=BGM.step%16;
+  if(BASS[i])tone(BASS[i],0.22,"triangle",0.11);
+  if(HAT[i])noise(0.04,0.03,0,true);
+  if(MELO[i]&&Math.random()<0.85)tone(MELO[i],0.18,"square",0.045);
+  if(i===0&&Math.random()<0.3)tone(55,0.5,"sine",0.1);
+  BGM.step++;
+}
+function bgmStart(){
+  audio();
+  if(BGM.timer)clearInterval(BGM.timer);
+  BGM.timer=setInterval(bgmStep,140); // ≒107BPM 8分
+}
+function bgmStop(){ if(BGM.timer){clearInterval(BGM.timer);BGM.timer=null;} }
+$("bgmBtn").addEventListener("click",()=>{
+  BGM.on=!BGM.on;
+  $("bgmBtn").textContent=BGM.on?"♪ ON":"♪ OFF";
+  if(BGM.on&&state.phase!=="title")bgmStart();else bgmStop();
+});
+
+/* =========================================================
+   敵・カード・バトル
+========================================================= */
+function spawnEnemy(){
+  const f=state.floor;
+  let e;
+  if(f%10===0){e={...BOSS};seBoss();}
+  else e={...ENEMIES[Math.floor(Math.random()*ENEMIES.length)]};
+  state.enemy=e;
+  const base=e.type==="boss"?3:2;
+  state.enemyMaxHp=base+Math.floor(f/4);
+  state.enemyHp=state.enemyMaxHp;
+  state.faceBreak=0;
+  showTalk(e.talk); // セリフ＝弱点ヒント
+  renderCards();
+  updateHud();
+}
+function pick(a){return a[Math.floor(Math.random()*a.length)];}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function makeHand(){
+  const keys=["health","money","smell","dasai"];
+  const hand=[];const e=state.enemy;
+  if(e.type==="boss")hand.push({attr:"special",txt:CARD_POOL.special[0]});
+  // 弱点カードは常に出やすく（推理して選べるように）だが確定ではない
+  if(e.type!=="boss"&&Math.random()<0.8)
+    hand.push({attr:e.weak,txt:pick(CARD_POOL[e.weak])});
+  while(hand.length<3){
+    const k=keys[Math.floor(Math.random()*keys.length)];
+    if(hand.some(c=>c.attr===k)&&Math.random()<0.6)continue;
+    hand.push({attr:k,txt:pick(CARD_POOL[k])});
+  }
+  return shuffle(hand).slice(0,3);
+}
+function renderCards(){
+  const box=$("cards");box.innerHTML="";
+  makeHand().forEach(c=>{
+    const d=document.createElement("div");
+    d.className="card"+(c.attr==="special"?" special":"");
+    const a=ATTRS[c.attr];
+    d.innerHTML=`<span class="attr ${a.cls}">${a.name}</span><div class="txt">${c.txt}</div>`;
+    d.addEventListener("click",()=>playCard(c));
+    box.appendChild(d);
+  });
+  // ヒント表示：図鑑に載ってれば弱点を明示、初見はセリフから推理
+  const e=state.enemy;
+  if(e.type==="boss")$("turnMsg").textContent="正論が通じない…！何かが要る";
+  else if(dex[e.type])$("turnMsg").innerHTML=`弱点は<b style="color:${ATTRS[e.weak].color}">${ATTRS[e.weak].name}</b>（図鑑済）`;
+  else $("turnMsg").textContent="セリフから弱点を読め！";
+  startTimer();
+}
+
+/* ---------- 制限時間バー（シビア） ---------- */
+function timerDurationFor(){
+  // 階が上がるほど短くなる。3.2秒→下限1.5秒
+  const d=3200-(state.floor-1)*80;
+  return Math.max(1500,d);
+}
+function startTimer(){
+  stopTimer();
+  const wrap=$("timerWrap"),bar=$("timerBar"),just=$("timerJust");
+  wrap.classList.remove("hide");
+  state.timerDur=timerDurationFor();
+  state.timerStart=performance.now();
+  state.timerActive=true;
+  // ジャストゾーン（残り18〜32%位置＝バー左側の狭い緑帯）
+  const jStart=14+Math.random()*8; // %
+  const jW=12;
+  just.style.left=jStart+"%";
+  just.style.width=jW+"%";
+  state._justLo=jStart/100; state._justHi=(jStart+jW)/100;
+  const tick=()=>{
+    if(!state.timerActive)return;
+    const el=performance.now()-state.timerStart;
+    const r=Math.max(0,1-el/state.timerDur); // 残り割合 1→0
+    bar.style.transform=`scaleX(${r})`;
+    // 残りが少なくなったら警告音
+    if(r<0.28&&!state._warned){state._warned=true;tone(1200,0.06,"square",0.08);}
+    if(r<0.14&&!state._warned2){state._warned2=true;tone(1500,0.06,"square",0.1);}
+    if(r<=0){ timeUp(); return; }
+    state.timerId=requestAnimationFrame(tick);
+  };
+  state._warned=false;state._warned2=false;
+  state.timerId=requestAnimationFrame(tick);
+}
+function stopTimer(){
+  state.timerActive=false;
+  if(state.timerId){cancelAnimationFrame(state.timerId);state.timerId=null;}
+}
+function currentRemain(){
+  const el=performance.now()-state.timerStart;
+  return Math.max(0,1-el/state.timerDur);
+}
+function timeUp(){
+  stopTimer();
+  $("timerWrap").classList.add("hide");
+  if(state.phase!=="pick")return;
+  state.phase="anim";
+  document.querySelectorAll(".card").forEach(el=>el.classList.add("disabled"));
+  seMiss();
+  state.combo=0;
+  showTalk("おせーよ、一服する暇あるわ");
+  enemySmokeAttack(14+Math.floor(state.floor/2));
+  updateHud();
+  setTimeout(afterAttack,700);
+}
+
+/* コンボ倍率：0→×1, 1→×1.5, 2→×2, 3→×3, 4+→×4… */
+function comboMult(c){
+  if(c<=0)return 1;
+  if(c===1)return 1.5;
+  return Math.min(6,c); // ×2,×3,×4,×5,×6上限
+}
+
+function playCard(card){
+  if(state.phase!=="pick")return;
+  const remain=currentRemain();
+  const isJust = remain>=state._justLo && remain<=state._justHi;
+  stopTimer();
+  $("timerWrap").classList.add("hide");
+  state.phase="anim";
+  document.querySelectorAll(".card").forEach(el=>el.classList.add("disabled"));
+  const e=state.enemy;
+  let result;
+  if(e.type==="boss")result=card.attr==="special"?"weak":"block";
+  else if(card.attr===e.weak)result="weak";
+  else if(card.attr===e.resist)result="block";
+  else result="normal";
+  addSeironFx(card,result,isJust);
+  // 速さボーナス（残り割合が高いほど加点）
+  if(result!=="block")state.timeBonus+=Math.round(remain*10);
+
+  setTimeout(()=>{
+    if(result==="weak"){
+      state.combo++;state.maxCombo=Math.max(state.maxCombo,state.combo);
+      const mult=comboMult(state.combo);
+      let dmg=Math.round((2+Math.floor(state.floor/6))*mult);
+      if(isJust){ dmg=Math.round(dmg*1.6); state.justCount++; seJust(); }
+      else seWeak();
+      state.enemyHp-=dmg;state.totalDmg+=dmg;
+      state.faceBreak=1;state.hitTimer=isJust?18:12;
+      flash();shake();
+      showTalk(isJust?"ぐわあっ！会心の正論！":"グフッ…！効いてる…！");
+      spawnHitParticles(true,isJust);
+      if(mult>=2)showCombo(state.combo,mult,isJust);
+    }else if(result==="normal"){
+      seHit();
+      state.combo=0;
+      let dmg=1; if(isJust){dmg=2;state.justCount++;}
+      state.enemyHp-=dmg;state.totalDmg+=dmg;
+      state.hitTimer=8;
+      showTalk("…で？刺さらんな");
+      spawnHitParticles(false);
+    }else{
+      seMiss();
+      state.combo=0;
+      showTalk(e.type==="boss"?"正論はワシには効かん":"はいはい、正論正論");
+      enemySmokeAttack(12+Math.floor(state.floor/2));
+    }
+    updateHud();
+    setTimeout(afterAttack,700);
+  },350);
+}
+function afterAttack(){
+  if(state.smoke>=100){gameOver();return;}
+  if(state.enemyHp<=0){
+    // 撃破→図鑑に記録
+    if(state.enemy.type!=="boss"){dex[state.enemy.type]=state.enemy;state.seen[state.enemy.type]=true;}
+    seFall();startFall();
+    setTimeout(()=>{
+      state.floor++;updateHud();spawnEnemy();state.phase="pick";
+    },1000);
+  }else{
+    state.faceBreak=0;
+    state.phase="pick";
+    renderCards();
+  }
+}
+function enemySmokeAttack(v){
+  state.smoke=Math.min(100,state.smoke+v);
+  spawnSmokePuffs();updateHud();
+}
+function gameOver(){
+  state.phase="over";
+  stopTimer();
+  $("timerWrap").classList.add("hide");
+  bgmStop();seOver();
+  setTimeout(showResult,900);
+}
+/* コンボ倍率のポップ表示 */
+function showCombo(c,mult,just){
+  const el=document.createElement("div");
+  el.textContent=`${c} COMBO ×${mult}`;
+  el.style.cssText=`position:absolute;left:50%;top:26%;transform:translateX(-50%);z-index:7;font-weight:bold;font-size:${just?26:22}px;color:${just?"#fff":"#ffd75e"};text-shadow:0 0 12px ${just?"#7ee787":"#ff9d3a"};pointer-events:none;transition:all .5s ease-out;`;
+  $("stage").appendChild(el);
+  requestAnimationFrame(()=>{el.style.top="16%";el.style.opacity="0";});
+  setTimeout(()=>el.remove(),600);
+}
+
+/* ---------- HUD ---------- */
+function updateHud(){
+  $("floorLabel").textContent=state.floor+"F "+(state.enemy?state.enemy.name:"");
+  $("comboLabel").textContent="COMBO "+state.combo;
+  $("smokeBar").style.width=state.smoke+"%";
+}
+let talkTimer=null;
+function showTalk(t){
+  const el=$("enemyTalk");
+  el.textContent=t;el.style.opacity=1;
+  clearTimeout(talkTimer);
+  talkTimer=setTimeout(()=>{el.style.opacity=0;},1500);
+}
+function flash(){const f=$("flash");f.style.opacity=.65;setTimeout(()=>f.style.opacity=0,90);}
+function shake(){const s=$("stage");s.classList.remove("shaking");void s.offsetWidth;s.classList.add("shaking");}
+function addSeironFx(card,result,isJust){
+  const el=document.createElement("div");
+  el.textContent=(isJust?"会心！ ":"")+card.txt;
+  const col=isJust?"#ffffff":ATTRS[card.attr].color;
+  const glow=isJust?"#7ee787":ATTRS[card.attr].color;
+  el.style.cssText=`position:absolute;left:50%;bottom:8%;transform:translateX(-50%);z-index:7;font-weight:bold;font-size:14px;color:${col};text-shadow:0 0 10px ${glow};transition:all .35s ease-out;white-space:nowrap;pointer-events:none;`;
+  $("stage").appendChild(el);
+  requestAnimationFrame(()=>{
+    el.style.bottom="55%";
+    el.style.opacity=result==="block"?0.2:1;
+    el.style.fontSize=(result==="weak")?(isJust?"24px":"21px"):"14px";
+  });
+  setTimeout(()=>el.remove(),700);
+}
+
+/* =========================================================
+   描画：背景（夜の喫煙所）
+========================================================= */
+let city=[];
+function buildCity(){
+  city=[];
+  let x=-20;
+  while(x<W+40){
+    const bw=30+Math.random()*50;
+    const bh=H*0.15+Math.random()*H*0.22;
+    const wins=[];
+    for(let wy=0;wy<bh-14;wy+=14)
+      for(let wx=5;wx<bw-8;wx+=11)
+        if(Math.random()<0.4)wins.push([wx,wy]);
+    city.push({x:x,w:bw,h:bh,wins:wins});
+    x+=bw+6+Math.random()*14;
+  }
+}
+let stars=null;
+function drawBackground(t){
+  // 空
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,"#141a30");g.addColorStop(0.55,"#12131f");g.addColorStop(1,"#0a0b12");
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  // 星
+  if(!stars){stars=[];for(let i=0;i<40;i++)stars.push([Math.random()*W,Math.random()*H*0.4,Math.random()]);}
+  stars.forEach(s=>{
+    ctx.globalAlpha=0.3+0.4*Math.abs(Math.sin(t/900+s[2]*7));
+    ctx.fillStyle="#cdd6ff";ctx.fillRect(s[0],s[1],1.6,1.6);
+  });
+  ctx.globalAlpha=1;
+  // 月
+  const mx=W*0.8,my=H*0.12;
+  const mg=ctx.createRadialGradient(mx,my,4,mx,my,60);
+  mg.addColorStop(0,"rgba(255,240,190,.9)");mg.addColorStop(0.25,"rgba(255,240,190,.25)");mg.addColorStop(1,"rgba(255,240,190,0)");
+  ctx.fillStyle=mg;ctx.beginPath();ctx.arc(mx,my,60,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#f5e9c0";ctx.beginPath();ctx.arc(mx,my,16,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="rgba(220,205,160,.5)";
+  ctx.beginPath();ctx.arc(mx-5,my-3,3,0,Math.PI*2);ctx.arc(mx+4,my+5,2,0,Math.PI*2);ctx.fill();
+  // ビル群
+  const baseY=H-24;
+  city.forEach(b=>{
+    ctx.fillStyle="#171825";
+    ctx.fillRect(b.x,baseY-b.h,b.w,b.h);
+    ctx.fillStyle="rgba(255,214,120,.55)";
+    b.wins.forEach(wn=>{
+      if(Math.sin(t/1400+wn[0]*wn[1])>-0.92)
+        ctx.fillRect(b.x+wn[0],baseY-b.h+wn[1]+4,5,7);
+    });
+  });
+  // フェンス（金網）
+  ctx.strokeStyle="rgba(120,128,150,.16)";ctx.lineWidth=1;
+  const fTop=H*0.3;
+  for(let x=-H;x<W+H;x+=16){
+    ctx.beginPath();ctx.moveTo(x,fTop);ctx.lineTo(x+ (baseY-fTop), baseY);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x,baseY);ctx.lineTo(x+ (baseY-fTop), fTop);ctx.stroke();
+  }
+  ctx.strokeStyle="rgba(140,148,170,.3)";ctx.lineWidth=3;
+  for(let x=20;x<W;x+=Math.max(90,W/4)){
+    ctx.beginPath();ctx.moveTo(x,fTop-6);ctx.lineTo(x,baseY);ctx.stroke();
+  }
+  ctx.beginPath();ctx.moveTo(0,fTop-4);ctx.lineTo(W,fTop-4);ctx.stroke();
+  // 「喫煙所」看板
+  drawSign(14,fTop-2);
+  // 地面
+  ctx.fillStyle="#1c1d29";ctx.fillRect(0,baseY,W,H-baseY);
+  ctx.strokeStyle="rgba(255,255,255,.06)";ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(0,baseY);ctx.lineTo(W,baseY);ctx.stroke();
+  // 灰皿スタンド
+  drawAshtray(W-46,baseY,t);
+  // 漂う煙
+  drawAmbientSmoke();
+}
+function drawSign(x,y){
+  ctx.save();ctx.translate(x,y);
+  ctx.fillStyle="#2e6b46";
+  roundRect(0,0,86,30,4);ctx.fill();
+  ctx.strokeStyle="#1c4630";ctx.lineWidth=2;roundRect(0,0,86,30,4);ctx.stroke();
+  ctx.fillStyle="#fff";
+  ctx.beginPath();ctx.arc(15,15,9,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle="#2e6b46";ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(8,17);ctx.lineTo(20,17);ctx.stroke();
+  ctx.beginPath();ctx.arc(20,13,2,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle="#fff";ctx.font="bold 12px sans-serif";ctx.textAlign="left";
+  ctx.fillText("喫煙所",30,20);
+  ctx.restore();
+}
+function drawAshtray(x,groundY,t){
+  ctx.save();ctx.translate(x,groundY);
+  ctx.fillStyle="#3a3d4d";
+  ctx.fillRect(-4,-52,8,52);
+  ctx.fillStyle="#4a4e60";
+  roundRect(-14,-64,28,14,4);ctx.fill();
+  ctx.fillStyle="#22242f";
+  ctx.beginPath();ctx.ellipse(0,-62,10,3,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="rgba(210,210,220,.25)";
+  for(let i=0;i<3;i++){
+    const yy=-70-i*10-(t/60)%10;
+    ctx.beginPath();ctx.arc(Math.sin(t/500+i)*3,yy,3+i*1.5,0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();
+}
+let ambient=[];
+function drawAmbientSmoke(){
+  if(ambient.length<10&&Math.random()<0.08)
+    ambient.push({x:Math.random()*W,y:H+20,r:24+Math.random()*40,v:0.25+Math.random()*0.35,o:0.04+Math.random()*0.04});
+  ambient.forEach(p=>{p.y-=p.v;p.x+=Math.sin(p.y/60)*0.3;});
+  ambient=ambient.filter(p=>p.y>-80);
+  ambient.forEach(p=>{
+    ctx.fillStyle=`rgba(190,192,205,${p.o})`;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+  });
+}
+function drawVignette(){
+  const v=ctx.createRadialGradient(W/2,H*0.45,H*0.25,W/2,H*0.5,H*0.75);
+  v.addColorStop(0,"rgba(0,0,0,0)");v.addColorStop(1,"rgba(0,0,0,.45)");
+  ctx.fillStyle=v;ctx.fillRect(0,0,W,H);
+}
+
+/* =========================================================
+   描画：キャラクター（カートゥーン調・輪郭線つき）
+========================================================= */
+const OUTLINE="#181a24";
+function roundRect(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+function shape(fill,line){
+  ctx.fillStyle=fill;ctx.fill();
+  ctx.strokeStyle=OUTLINE;ctx.lineWidth=line;ctx.stroke();
+}
+/* キャラごとの配色 */
+const OUTFIT={
+  ikiri:{coat:"#26262e",coat2:"#1b1b22",inner:"#b03a3a",skin:"#f0c49a",hair:"#151515"},
+  vape:{coat:"#2a7f83",coat2:"#1f5f63",inner:"#e8e4d8",skin:"#f5d2ac",hair:"#4a3524"},
+  aruki:{coat:"#7a5a3a",coat2:"#5e452c",inner:"#d8d4c8",skin:"#eec49c",hair:"#2a2a2a"},
+  senpai:{coat:"#2c3d5e",coat2:"#20304c",inner:"#f2f2f2",skin:"#f0c8a0",hair:"#1e1e1e"},
+  kanki:{coat:"#4a6b4e",coat2:"#3a5540",inner:"#e8e0c8",skin:"#eabf96",hair:"#333"},
+  bucho:{coat:"#4e4e58",coat2:"#3c3c46",inner:"#f0f0f0",skin:"#e8be96",hair:"#777"},
+  boss:{coat:"#5a4028",coat2:"#46311e",inner:"#c8b890",skin:"#e0b48c",hair:"#bbb"}
+};
+/**
+ * 喫煙者を描く（ドット絵画像版）
+ * x,y = 足元中心 / h = 全身高さ / faceBreak=1でダサ顔（青ざめ＋汗）
+ */
+function drawSmoker(x,y,h,type,faceBreak,rot,t){
+  const img=CHAR_IMG_OBJ[type];
+  const isBoss=type==="boss";
+  ctx.save();
+  ctx.translate(x,y);
+  if(rot)ctx.rotate(rot);
+  const bob=faceBreak?0:Math.sin(t/420)*3;
+  ctx.translate(0,bob);
+
+  // 表示サイズ（アスペクト比維持、hを全身高さに）
+  let dw,dh;
+  if(img&&img.complete&&img.naturalWidth){
+    const ar=img.naturalWidth/img.naturalHeight;
+    dh=h*(isBoss?1.15:1.0); dw=dh*ar;
+  }else{ dh=h; dw=h*0.75; }
+
+  // 影
+  ctx.fillStyle="rgba(0,0,0,.4)";
+  ctx.beginPath();ctx.ellipse(0,0,dw*0.36,dh*0.05,0,0,Math.PI*2);ctx.fill();
+
+  // ボスの金オーラ（後光）
+  if(isBoss&&!faceBreak){
+    ctx.globalAlpha=0.35+0.12*Math.sin(t/380);
+    const ag=ctx.createRadialGradient(0,-dh*0.5,dh*0.1,0,-dh*0.5,dh*0.75);
+    ag.addColorStop(0,"rgba(240,200,90,.5)");ag.addColorStop(1,"rgba(240,200,90,0)");
+    ctx.fillStyle=ag;
+    ctx.beginPath();ctx.arc(0,-dh*0.5,dh*0.75,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=1;
+  }
+
+  if(img&&img.complete&&img.naturalWidth){
+    ctx.imageSmoothingEnabled=false; // ドット絵くっきり
+    // ダサ顔時：赤め→青ざめのフィルタを重ねるため一旦通常描画
+    ctx.drawImage(img,-dw/2,-dh,dw,dh);
+    if(faceBreak){
+      // 青ざめオーバーレイ（乗算風）
+      ctx.save();
+      ctx.globalCompositeOperation="source-atop";
+      ctx.globalAlpha=0.35;
+      const bg=ctx.createLinearGradient(0,-dh,0,0);
+      bg.addColorStop(0,"#5aa0e0");bg.addColorStop(1,"#3a70b0");
+      ctx.fillStyle=bg;
+      ctx.fillRect(-dw/2,-dh,dw,dh);
+      ctx.restore();
+    }
+  }else{
+    // フォールバック（画像未ロード時の簡易シルエット）
+    ctx.fillStyle="#3d4452";
+    roundRect(-dw/2,-dh,dw,dh,10);ctx.fill();
+  }
+
+  // キメ顔時の立ちのぼる煙（口元付近から）
+  if(!faceBreak){
+    drawCigSmokeLocal(-dw*0.05, -dh*0.72, dh/150, t);
+  }
+
+  // ダサ顔の追加演出：ぐるぐる目・汗・「!?」
+  if(faceBreak){
+    const hx=0, hy=-dh*0.78, s=dh/150;
+    ctx.strokeStyle="#fff";ctx.lineWidth=2.4*s;ctx.lineCap="round";
+    drawSwirl(-9*s,hy,6*s);drawSwirl(9*s,hy,6*s);
+    // 汗
+    ctx.fillStyle="#7fd4ff";
+    ctx.beginPath();ctx.ellipse(20*s,hy-8*s,3.5*s,6*s,0.3,0,Math.PI*2);ctx.fill();
+    // びっくりマーク
+    ctx.fillStyle="#ffe04a";ctx.font=`bold ${20*s}px sans-serif`;ctx.textAlign="center";
+    ctx.fillText("!?",26*s,hy-14*s);
+  }
+
+  ctx.restore();
+}
+function drawSwirl(x,y,r){
+  ctx.beginPath();
+  for(let a=0;a<Math.PI*4;a+=0.3){
+    const rr=r*a/(Math.PI*4);
+    const px=x+Math.cos(a)*rr,py=y+Math.sin(a)*rr;
+    if(a===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+}
+function drawCigSmokeLocal(x,y,s,t){
+  ctx.strokeStyle="rgba(215,218,228,.4)";
+  ctx.lineWidth=2.5*s;ctx.lineCap="round";
+  ctx.beginPath();
+  ctx.moveTo(x,y);
+  for(let i=1;i<=4;i++){
+    const yy=y-i*12*s;
+    const xx=x+Math.sin(t/350+i*1.3)*6*s;
+    ctx.quadraticCurveTo(x+Math.sin(t/350+i)*8*s,yy+6*s,xx,yy);
+  }
+  ctx.stroke();
+  ctx.fillStyle="rgba(220,222,232,.25)";
+  for(let i=0;i<3;i++){
+    const yy=y-50*s-i*12*s-(t/50)%12;
+    ctx.beginPath();ctx.arc(x+Math.sin(t/400+i)*8*s,yy,(4+i*2.5)*s,0,Math.PI*2);ctx.fill();
+  }
+}
+function lighten(hex,amt){
+  const n=parseInt(hex.slice(1),16);
+  const r=Math.min(255,(n>>16)+amt),g=Math.min(255,((n>>8)&255)+amt),b=Math.min(255,(n&255)+amt);
+  return `rgb(${r},${g},${b})`;
+}
+
+/* ---------- 撃破残骸（つぶれた喫煙者の山） ---------- */
+function drawRubble(x,y,w,i){
+  ctx.save();
+  ctx.translate(x+(i%2?7:-7),y);
+  ctx.rotate((i%2?1:-1)*0.045);
+  roundRect(-w/2,-13,w,26,8);
+  const rg=ctx.createLinearGradient(0,-13,0,13);
+  rg.addColorStop(0,"#3d3f50");rg.addColorStop(1,"#2c2e3c");
+  shape(rg,2);
+  // つぶれ顔
+  ctx.strokeStyle="#666";ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(-w/2+12,-3);ctx.lineTo(-w/2+20,3);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(-w/2+20,-3);ctx.lineTo(-w/2+12,3);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(-w/2+28,-3);ctx.lineTo(-w/2+36,3);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(-w/2+36,-3);ctx.lineTo(-w/2+28,3);ctx.stroke();
+  ctx.fillStyle="#888";ctx.font="bold 10px sans-serif";ctx.textAlign="right";
+  ctx.fillText("撃破済",w/2-10,4);
+  ctx.restore();
+}
+function drawHpBar(x,y){
+  const w=120;
+  ctx.fillStyle="rgba(0,0,0,.55)";roundRect(x-w/2,y,w,11,5);ctx.fill();
+  ctx.strokeStyle="#444";ctx.lineWidth=1;roundRect(x-w/2,y,w,11,5);ctx.stroke();
+  const r=Math.max(0,state.enemyHp/state.enemyMaxHp);
+  ctx.fillStyle=r>0.5?"#7ee787":r>0.25?"#ffd75e":"#ff6a6a";
+  if(r>0){roundRect(x-w/2+2,y+2,(w-4)*r,7,3);ctx.fill();}
+}
+
+/* ---------- パーティクル ---------- */
+function spawnHitParticles(big,isJust){
+  const n=isJust?32:(big?20:9);
+  const spread=isJust?14:(big?11:5);
+  for(let i=0;i<n;i++){
+    state.particles.push({
+      x:W/2,y:H*0.42,
+      vx:(Math.random()-0.5)*spread,
+      vy:(Math.random()-0.7)*spread,
+      life:isJust?38:30,
+      color:isJust?(Math.random()<0.5?"#7ee787":"#fff"):(big?"#9fe8ff":"#ffd75e"),
+      size:isJust?6:(big?5:3)
+    });
+  }
+  if(big||isJust){
+    for(let i=0;i<(isJust?12:6);i++){
+      state.particles.push({
+        x:W/2,y:H*0.42,
+        vx:(Math.random()-0.5)*(isJust?11:8),vy:(Math.random()-0.8)*(isJust?11:8),
+        life:isJust?42:35,color:"#fff",size:isJust?3:2,star:true
+      });
+    }
+  }
+}
+function spawnSmokePuffs(){
+  for(let i=0;i<12;i++){
+    state.particles.push({
+      x:W/2+(Math.random()-0.5)*70,y:H*0.5,
+      vx:(Math.random()-0.5)*2,vy:1+Math.random()*2.5,
+      life:50,color:"rgba(178,180,192,.5)",size:10+Math.random()*9,smoke:true
+    });
+  }
+}
+function drawParticles(){
+  state.particles.forEach(p=>{
+    p.x+=p.vx;p.y+=p.vy;p.life--;
+    if(!p.smoke)p.vy+=0.3;
+    ctx.globalAlpha=Math.max(0,p.life/30);
+    ctx.fillStyle=p.color;
+    if(p.star){
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.life*0.2);
+      ctx.fillRect(-3,-1,6,2);ctx.fillRect(-1,-3,2,6);
+      ctx.restore();
+    }else{
+      ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();
+    }
+    ctx.globalAlpha=1;
+  });
+  state.particles=state.particles.filter(p=>p.life>0);
+  state.fallers.forEach(f=>{f.vy+=0.6;f.y+=f.vy;f.x+=f.vx;f.rot+=f.vr;});
+  state.fallers=state.fallers.filter(f=>f.y<H+250);
+}
+function startFall(){
+  const dir=Math.random()<0.5?-1:1;
+  state.fallers.push({
+    x:W/2,y:H*0.55,vx:dir*(2.5+Math.random()*2),vy:-5,vr:dir*0.14,rot:0,
+    type:state.enemy.type
+  });
+  state.faceBreak=1;
+}
+
+/* ---------- シーン合成 ---------- */
+function drawScene(t){
+  ctx.clearRect(0,0,W,H);
+  drawBackground(t);
+  if(state&&state.enemy){
+    const cx=W/2;
+    const groundY=H-26;
+    const stack=Math.min(5,Math.max(0,state.floor-1-(state.fallers.length?1:0)));
+    for(let i=0;i<stack;i++)drawRubble(cx,groundY-14-i*27,128-i*13,i);
+    const towerTop=groundY-stack*27-4;
+    const charH=Math.min(230,Math.max(150,H*0.34)); // 画面に応じた全身高さ
+    state.fallers.forEach(f=>drawSmoker(f.x,f.y,charH,f.type,1,f.rot,t));
+    if(state.phase!=="over"&&state.phase!=="title"){
+      const h=state.enemy.type==="boss"?charH*1.05:charH;
+      const feetY=towerTop;
+      const shakeX=state.hitTimer>0?(Math.random()-0.5)*8:0;
+      if(state.hitTimer>0)state.hitTimer--;
+      drawSmoker(cx+shakeX,feetY,h,state.enemy.type,state.faceBreak,0,t);
+      drawHpBar(cx,feetY-h-24);
+      // 名前タグ
+      ctx.fillStyle="rgba(0,0,0,.5)";
+      ctx.font="bold 11px sans-serif";
+      const nm=state.enemy.name;
+      const tw=ctx.measureText(nm).width+14;
+      roundRect(cx-tw/2,feetY-h-44,tw,16,8);ctx.fill();
+      ctx.fillStyle="#ffd75e";ctx.textAlign="center";
+      ctx.fillText(nm,cx,feetY-h-32);
+    }
+  }
+  drawParticles();
+  drawVignette();
+}
+function loop(t){
+  drawScene(t||0);
+  requestAnimationFrame(loop);
+}
+
+/* =========================================================
+   リザルト＆ランキング＆共有
+========================================================= */
+function calcScore(){
+  return (state.floor-1)*100+state.totalDmg*5+state.maxCombo*30+state.justCount*40+state.timeBonus*3;
+}
+function showResult(){
+  $("resFloor").textContent=state.floor+"F";
+  const sec=Math.floor((Date.now()-state.startTime)/1000);
+  $("resDetail").innerHTML=
+    `崩した階：${state.floor-1}階　最大コンボ：${state.maxCombo}<br>`+
+    `会心（ジャスト）：${state.justCount}回　与ダメ：${state.totalDmg}<br>`+
+    `プレイ時間：${sec}秒<br>`+
+    `スコア：<b style="color:#9fe8ff">${calcScore()}</b>`;
+  $("rankArea").classList.toggle("hidden",!RANKING_ON);
+  $("rankList").classList.add("hidden");
+  $("resultScreen").classList.remove("hidden");
+}
+async function submitScore(){
+  if(!RANKING_ON)return;
+  const name=($("nameInput").value||"名無しの正論").slice(0,10);
+  $("submitBtn").disabled=true;
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/rpc/yt_submit`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY},
+      body:JSON.stringify({p_name:name,p_score:calcScore(),p_floor:state.floor})
+    });
+    await loadRanking();
+  }catch(e){}
+  $("submitBtn").disabled=false;
+}
+async function loadRanking(){
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/yt_top`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","apikey":SUPABASE_ANON_KEY,"Authorization":"Bearer "+SUPABASE_ANON_KEY},
+      body:JSON.stringify({})
+    });
+    const rows=await res.json();
+    const list=$("rankList");
+    list.innerHTML=rows.map((r,i)=>
+      `<div class="row"><span>${i+1}位 ${escapeHtml(r.name)}</span><span>${r.floor}F / ${r.score}</span></div>`
+    ).join("")||"まだ誰もいない…";
+    list.classList.remove("hidden");
+  }catch(e){}
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function share(){
+  const text=`【ヤニカスの塔】${state.floor}Fまで正論で崩した！（スコア${calcScore()}）\n#ヤニカスの塔 #カイディンディン`;
+  const url=location.href.split("?")[0];
+  if(navigator.share)navigator.share({text:text,url:url}).catch(()=>{});
+  else window.open("https://twitter.com/intent/tweet?text="+encodeURIComponent(text)+"&url="+encodeURIComponent(url));
+}
+
+/* ---------- 画面遷移 ---------- */
+function startGame(){
+  seStart();
+  state=newState();
+  state.startTime=Date.now();
+  $("titleScreen").classList.add("hidden");
+  $("resultScreen").classList.add("hidden");
+  resize();
+  spawnEnemy();
+  state.phase="pick";
+  if(BGM.on)bgmStart();
+}
+$("startBtn").addEventListener("click",startGame);
+$("retryBtn").addEventListener("click",startGame);
+$("howtoBtn").addEventListener("click",()=>{$("titleScreen").classList.add("hidden");$("howtoScreen").classList.remove("hidden");});
+$("backBtn").addEventListener("click",()=>{$("howtoScreen").classList.add("hidden");$("titleScreen").classList.remove("hidden");});
+$("shareBtn").addEventListener("click",share);
+$("submitBtn").addEventListener("click",submitScore);
+
+/* ---------- 起動 ---------- */
+state=newState();
+resize();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
